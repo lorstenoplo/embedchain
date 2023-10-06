@@ -36,11 +36,10 @@ class GPT4ALLLlm(BaseLlm):
         if config.system_prompt:
             raise ValueError("OpenSourceApp does not support `system_prompt`")
 
-        response = self.instance.generate(
+        return self.instance.generate(
             prompt=prompt,
             streaming=config.stream,
             top_p=config.top_p,
             max_tokens=config.max_tokens,
             temp=config.temperature,
         )
-        return response

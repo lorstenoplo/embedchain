@@ -36,13 +36,13 @@ class ElasticsearchDB(BaseVectorDB):
         """
         if config is None and es_config is None:
             self.config = ElasticsearchDBConfig()
-        else:
-            if not isinstance(config, ElasticsearchDBConfig):
-                raise TypeError(
-                    "config is not a `ElasticsearchDBConfig` instance. "
-                    "Please make sure the type is right and that you are passing an instance."
-                )
+        elif isinstance(config, ElasticsearchDBConfig):
             self.config = config or es_config
+        else:
+            raise TypeError(
+                "config is not a `ElasticsearchDBConfig` instance. "
+                "Please make sure the type is right and that you are passing an instance."
+            )
         self.client = Elasticsearch(self.config.ES_URL, **self.config.ES_EXTRA_PARAMS)
 
         # Call parent init here because embedder is needed
@@ -118,18 +118,23 @@ class ElasticsearchDB(BaseVectorDB):
         :type ids: List[str]
         """
 
-        docs = []
         if not skip_embedding:
             embeddings = self.embedder.embedding_fn(documents)
 
-        for id, text, metadata, embeddings in zip(ids, documents, metadatas, embeddings):
-            docs.append(
-                {
-                    "_index": self._get_index(),
-                    "_id": id,
-                    "_source": {"text": text, "metadata": metadata, "embeddings": embeddings},
-                }
+        docs = [
+            {
+                "_index": self._get_index(),
+                "_id": id,
+                "_source": {
+                    "text": text,
+                    "metadata": metadata,
+                    "embeddings": embeddings,
+                },
+            }
+            for id, text, metadata, embeddings in zip(
+                ids, documents, metadatas, embeddings
             )
+        ]
         bulk(self.client, docs)
         self.client.indices.refresh(index=self._get_index())
 
@@ -167,8 +172,7 @@ class ElasticsearchDB(BaseVectorDB):
         _source = ["text"]
         response = self.client.search(index=self._get_index(), query=query, _source=_source, size=n_results)
         docs = response["hits"]["hits"]
-        contents = [doc["_source"]["text"] for doc in docs]
-        return contents
+        return [doc["_source"]["text"] for doc in docs]
 
     def set_collection_name(self, name: str):
         """
@@ -190,8 +194,7 @@ class ElasticsearchDB(BaseVectorDB):
         """
         query = {"match_all": {}}
         response = self.client.count(index=self._get_index(), query=query)
-        doc_count = response["count"]
-        return doc_count
+        return response["count"]
 
     def reset(self):
         """

@@ -18,11 +18,7 @@ class BaseLlm(JSONSerializable):
         :param config: LLM configuration option class, defaults to None
         :type config: Optional[BaseLlmConfig], optional
         """
-        if config is None:
-            self.config = BaseLlmConfig()
-        else:
-            self.config = config
-
+        self.config = BaseLlmConfig() if config is None else config
         self.memory = ConversationBufferMemory()
         self.is_docs_site_instance = False
         self.online = False
@@ -46,8 +42,7 @@ class BaseLlm(JSONSerializable):
 
     def update_history(self):
         """Update class history attribute with history in memory (for chat method)"""
-        chat_history = self.memory.load_memory_variables({})["history"]
-        if chat_history:
+        if chat_history := self.memory.load_memory_variables({})["history"]:
             self.set_history(chat_history)
 
     def generate_prompt(self, input_query: str, contexts: List[str], **kwargs: Dict[str, Any]) -> str:
@@ -63,18 +58,18 @@ class BaseLlm(JSONSerializable):
         :rtype: str
         """
         context_string = (" | ").join(contexts)
-        web_search_result = kwargs.get("web_search_result", "")
-        if web_search_result:
+        if web_search_result := kwargs.get("web_search_result", ""):
             context_string = self._append_search_and_context(context_string, web_search_result)
 
-        template_contains_history = self.config._validate_template_history(self.config.template)
-        if template_contains_history:
+        if template_contains_history := self.config._validate_template_history(
+            self.config.template
+        ):
             # Template contains history
             # If there is no history yet, we insert `- no history -`
             prompt = self.config.template.substitute(
                 context=context_string, query=input_query, history=self.history or "- no history -"
             )
-        elif self.history and not template_contains_history:
+        elif self.history:
             # History is present, but not included in the template.
             # check if it's the default template without history
             if (
@@ -208,11 +203,10 @@ class BaseLlm(JSONSerializable):
 
             answer = self.get_answer_from_llm(prompt)
 
-            if isinstance(answer, str):
-                logging.info(f"Answer: {answer}")
-                return answer
-            else:
+            if not isinstance(answer, str):
                 return self._stream_query_response(answer)
+            logging.info(f"Answer: {answer}")
+            return answer
         finally:
             if config:
                 # Restore previous config
@@ -266,18 +260,17 @@ class BaseLlm(JSONSerializable):
 
             self.memory.chat_memory.add_user_message(input_query)
 
-            if isinstance(answer, str):
-                self.memory.chat_memory.add_ai_message(answer)
-                logging.info(f"Answer: {answer}")
-
-                # NOTE: Adding to history before and after. This could be seen as redundant.
-                # If we change it, we have to change the tests (no big deal).
-                self.update_history()
-
-                return answer
-            else:
+            if not isinstance(answer, str):
                 # this is a streamed response and needs to be handled differently.
                 return self._stream_chat_response(answer)
+            self.memory.chat_memory.add_ai_message(answer)
+            logging.info(f"Answer: {answer}")
+
+            # NOTE: Adding to history before and after. This could be seen as redundant.
+            # If we change it, we have to change the tests (no big deal).
+            self.update_history()
+
+            return answer
         finally:
             if config:
                 # Restore previous config
