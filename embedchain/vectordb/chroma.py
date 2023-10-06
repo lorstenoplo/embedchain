@@ -31,11 +31,7 @@ class ChromaDB(BaseVectorDB):
         :param config: Configuration options for Chroma, defaults to None
         :type config: Optional[ChromaDbConfig], optional
         """
-        if config:
-            self.config = config
-        else:
-            self.config = ChromaDbConfig()
-
+        self.config = config if config else ChromaDbConfig()
         self.settings = Settings()
         self.settings.allow_reset = self.config.allow_reset
         if self.config.chroma_settings:
@@ -189,12 +185,10 @@ class ChromaDB(BaseVectorDB):
                 )
         except InvalidDimensionException as e:
             raise InvalidDimensionException(
-                e.message()
-                + ". This is commonly a side-effect when an embedding function, different from the one used to add the embeddings, is used to retrieve an embedding from the database."  # noqa E501
+                f"{e.message()}. This is commonly a side-effect when an embedding function, different from the one used to add the embeddings, is used to retrieve an embedding from the database."
             ) from None
         results_formatted = self._format_result(result)
-        contents = [result[0].page_content for result in results_formatted]
-        return contents
+        return [result[0].page_content for result in results_formatted]
 
     def set_collection_name(self, name: str):
         """

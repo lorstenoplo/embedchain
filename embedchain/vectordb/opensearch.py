@@ -85,12 +85,11 @@ class OpenSearchDB(BaseVectorDB):
         :return: ids
         :type: Set[str]
         """
-        query = {}
-        if ids:
-            query["query"] = {"bool": {"must": [{"ids": {"values": ids}}]}}
-        else:
-            query["query"] = {"bool": {"must": []}}
-
+        query = {
+            "query": {"bool": {"must": [{"ids": {"values": ids}}]}}
+            if ids
+            else {"bool": {"must": []}}
+        }
         if "app_id" in where:
             app_id = where["app_id"]
             query["query"]["bool"]["must"].append({"term": {"metadata.app_id.keyword": app_id}})
@@ -126,17 +125,22 @@ class OpenSearchDB(BaseVectorDB):
         :type skip_embedding: bool
         """
 
-        docs = []
         # TODO(rupeshbansal, deshraj): Add support for skip embeddings here if already exists
         embeddings = self.embedder.embedding_fn(documents)
-        for id, text, metadata, embeddings in zip(ids, documents, metadatas, embeddings):
-            docs.append(
-                {
-                    "_index": self._get_index(),
-                    "_id": id,
-                    "_source": {"text": text, "metadata": metadata, "embeddings": embeddings},
-                }
+        docs = [
+            {
+                "_index": self._get_index(),
+                "_id": id,
+                "_source": {
+                    "text": text,
+                    "metadata": metadata,
+                    "embeddings": embeddings,
+                },
+            }
+            for id, text, metadata, embeddings in zip(
+                ids, documents, metadatas, embeddings
             )
+        ]
         bulk(self.client, docs)
         self.client.indices.refresh(index=self._get_index())
 
@@ -179,8 +183,7 @@ class OpenSearchDB(BaseVectorDB):
             pre_filter=pre_filter,
             k=n_results,
         )
-        contents = [doc.page_content for doc in docs]
-        return contents
+        return [doc.page_content for doc in docs]
 
     def set_collection_name(self, name: str):
         """
@@ -202,8 +205,7 @@ class OpenSearchDB(BaseVectorDB):
         """
         query = {"query": {"match_all": {}}}
         response = self.client.count(index=self._get_index(), body=query)
-        doc_count = response["count"]
-        return doc_count
+        return response["count"]
 
     def reset(self):
         """

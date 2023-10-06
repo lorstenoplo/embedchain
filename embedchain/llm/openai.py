@@ -16,16 +16,13 @@ class OpenAILlm(BaseLlm):
     def get_llm_model_answer(self, prompt):
         response = OpenAILlm._get_answer(prompt, self.config)
 
-        if self.config.stream:
-            return response
-        else:
-            return response.content
+        return response if self.config.stream else response.content
 
-    def _get_answer(prompt: str, config: BaseLlmConfig) -> str:
+    def _get_answer(self, config: BaseLlmConfig) -> str:
         messages = []
         if config.system_prompt:
             messages.append(SystemMessage(content=config.system_prompt))
-        messages.append(HumanMessage(content=prompt))
+        messages.append(HumanMessage(content=self))
         kwargs = {
             "model": config.model or "gpt-3.5-turbo",
             "temperature": config.temperature,
@@ -36,7 +33,7 @@ class OpenAILlm(BaseLlm):
             kwargs["model_kwargs"]["top_p"] = config.top_p
         if config.stream:
             from langchain.callbacks.streaming_stdout import \
-                StreamingStdOutCallbackHandler
+                    StreamingStdOutCallbackHandler
 
             chat = ChatOpenAI(**kwargs, streaming=config.stream, callbacks=[StreamingStdOutCallbackHandler()])
         else:

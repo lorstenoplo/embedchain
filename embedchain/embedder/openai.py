@@ -25,11 +25,11 @@ class OpenAIEmbedder(BaseEmbedder):
         if self.config.deployment_name:
             embeddings = OpenAIEmbeddings(deployment=self.config.deployment_name)
             embedding_fn = BaseEmbedder._langchain_default_concept(embeddings)
+        elif os.getenv("OPENAI_API_KEY") is None and os.getenv("OPENAI_ORGANIZATION") is None:
+            raise ValueError(
+                "OPENAI_API_KEY or OPENAI_ORGANIZATION environment variables not provided"
+            )  # noqa:E501
         else:
-            if os.getenv("OPENAI_API_KEY") is None and os.getenv("OPENAI_ORGANIZATION") is None:
-                raise ValueError(
-                    "OPENAI_API_KEY or OPENAI_ORGANIZATION environment variables not provided"
-                )  # noqa:E501
             embedding_fn = embedding_functions.OpenAIEmbeddingFunction(
                 api_key=os.getenv("OPENAI_API_KEY"),
                 organization_id=os.getenv("OPENAI_ORGANIZATION"),

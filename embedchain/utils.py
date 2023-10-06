@@ -102,7 +102,7 @@ def format_source(source: str, limit: int = 20) -> str:
     If the string is too short, it is not sliced.
     """
     if len(source) > 2 * limit:
-        return source[:limit] + "..." + source[-limit:]
+        return f"{source[:limit]}...{source[-limit:]}"
     return source
 
 
